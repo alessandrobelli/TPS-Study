@@ -1,8 +1,9 @@
 # Third-Person Shooter Study
 
-> **📢 COMING SOON: In-depth article on Blueprint to C++ conversion techniques**
+> **📢 Related article: https://alessandrobelli.it/creating-fortnite-shooting-cpp/**
 > 
-> Watch this space for a link to a comprehensive guide on migrating from Blueprint to C++.
+
+This project is meant to be run in Unreal Engine. There's no provided executable or precompiled binaries.
 
 ## Project Overview
 

@@ -164,7 +164,7 @@ private:
 
     // --- INTERNAL STATE / TIMERS ---
     FTimerHandle RetriggerableDelayTimerHandle; // Used by FireWeapon timer loop
-    bool bIsHoldingFire = false; // Tracks if the fire input is held (Consider renaming or removing if GateComponent handles this)
+    bool bIsHoldingFire = false; // Tracks if the fire input is held
 	int32 UUIDLatentAction = FMath::Rand(); // Used for RetriggerableDelay LatentActionInfo
 
 	// --- UTILITY ---
