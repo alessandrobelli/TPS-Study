@@ -5,9 +5,12 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "ProjectileBase.h"
-#include "VectorTypes.h"
 #include "WeaponBase.h"
+#include "AssetTypeActions/AssetDefinition_SoundBase.h"
+#include "Camera/CameraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -18,20 +21,20 @@ AShooterPlayerController::AShooterPlayerController()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	InitializeCameras();
 
-    AttributeComponent = CreateDefaultSubobject<UAttributeComponent>(TEXT("AttributeComponent"));
-
+    AttributeComponent = CreateDefaultSubobject<UAttributeComponent>(TEXT("AttributeComponentCpp"));
 
 	ShepardTone = CreateDefaultSubobject<UAudioComponent>("ShepardTone");
 	ShepardTone->bAutoActivate = false;
 	USoundBase* ShepardToneSound = LoadObject<USoundBase>(nullptr, TEXT("SoundWave'/Game/Sounds/shepard_tone.shepard_tone'"));
 	ShepardTone->SetSound(ShepardToneSound);
+	EmptyRifleSound = LoadObject<USoundBase>(nullptr, TEXT("SoundWave'/Game/Sounds/EmptyRifle.EmptyRifle'"));
 	
 	WeaponSocketName = FName(TEXT("hand_rSocket"));
 
 	 // Create the gate component
     GateComponent = CreateDefaultSubobject<UGateComponent>(TEXT("GateComponent"));
-	
 	
     WeaponBPM = 60.0f;
 }
@@ -45,6 +48,70 @@ void AShooterPlayerController::StopShootWeapon()
 void AShooterPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+    // --- Determine which curves to use (Editor assigned or C++ default) ---
+    UCurveFloat* OffsetCurveToUse = AimingCameraOffsetCurve; // Start with the editor-assigned property
+    UCurveFloat* FOVCurveToUse = AimingCameraFOVCurve;       // Start with the editor-assigned property
+
+    // Check if the Offset curve needs a C++ default
+    if (!OffsetCurveToUse)
+    {
+        
+        CppCreatedOffsetCurve = NewObject<UCurveFloat>(this, TEXT("CppDefaultOffsetCurve"));
+        if (CppCreatedOffsetCurve)
+        {
+            // Make sure defaults were stored before this point!
+            CppCreatedOffsetCurve->FloatCurve.AddKey(0.0f, DefaultCameraSocketOffset.X);
+            CppCreatedOffsetCurve->FloatCurve.AddKey(0.1f, 60.0f); 
+            OffsetCurveToUse = CppCreatedOffsetCurve;
+        }
+    }
+
+    // Check if the FOV curve needs a C++ default
+    if (!FOVCurveToUse)
+    {
+         // Create a default curve in C++ if none was assigned in the editor
+         CppCreatedFOVCurve = NewObject<UCurveFloat>(this, TEXT("CppDefaultFOVCurve"));
+         if (CppCreatedFOVCurve)
+         {
+            // Make sure defaults were stored before this point!
+            CppCreatedFOVCurve->FloatCurve.AddKey(0.0f, DefaultCameraFOV);
+            CppCreatedFOVCurve->FloatCurve.AddKey(0.1f, 75.0f); 
+            FOVCurveToUse = CppCreatedFOVCurve; 
+         }
+    }
+    // --- Curves decided ---
+
+
+    // --- Setup Aiming Timeline USING the determined curves ---
+    // Now check if we have *any* valid curve to use for the timeline
+    if (OffsetCurveToUse || FOVCurveToUse)
+    {
+        FOnTimelineFloat OffsetProgressDelegate;
+        FOnTimelineFloat FOVProgressDelegate;
+
+        OffsetProgressDelegate.BindUFunction(this, FName("AimingTimelineUpdate_Offset"));
+        FOVProgressDelegate.BindUFunction(this, FName("AimingTimelineUpdate_FOV"));
+
+        // Add tracks using the potentially C++ created curves
+        if (OffsetCurveToUse) // Use the variable holding the curve we decided on
+        {
+            AimingCameraTimeline.AddInterpFloat(OffsetCurveToUse, OffsetProgressDelegate, FName("AimingOffset"));
+            UE_LOG(LogTemp, Log, TEXT("Added Offset curve to timeline: %s"), *GetNameSafe(OffsetCurveToUse)); 
+        }
+        if (FOVCurveToUse) // Use the variable holding the curve we decided on
+        {
+            AimingCameraTimeline.AddInterpFloat(FOVCurveToUse, FOVProgressDelegate, FName("AimingFOV"));
+             UE_LOG(LogTemp, Log, TEXT("Added FOV curve to timeline: %s"), *GetNameSafe(FOVCurveToUse)); 
+        }
+    }
+    else
+    {
+        // This warning should now only appear if BOTH editor assignment AND C++ creation failed
+        UE_LOG(LogTemp, Warning, TEXT("No valid aiming curves (editor-assigned or C++ default) found for %s. Timeline visuals disabled."), *GetName());
+    }
+    // --- Timeline Setup Complete ---
+
 	if (APlayerCameraManager* PlayerCameraManager = GetWorld()->GetFirstPlayerController()->PlayerCameraManager; PlayerCameraManager != nullptr)
 	{
 		PlayerCameraManager->ViewPitchMin = -30.0f;
@@ -66,8 +133,7 @@ void AShooterPlayerController::BeginPlay()
 	    CurrentWeaponCpp->SetActorHiddenInGame(true);
 	}
 	SpawnWeapon();
-
-
+	
 }
 
 void AShooterPlayerController::OnPlayerGetHit(UAttributeComponent* OwningComp, float NewHealth, float Delta)
@@ -98,6 +164,7 @@ void AShooterPlayerController::OnPlayerGetHit(UAttributeComponent* OwningComp, f
 void AShooterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	AimingCameraTimeline.TickTimeline(DeltaTime);
 
 }
 
@@ -127,6 +194,9 @@ void AShooterPlayerController::SetupPlayerInputComponent(UInputComponent* Player
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AShooterPlayerController::Look);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Started, this, &AShooterPlayerController::StartAiming);
+		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Canceled, this, &AShooterPlayerController::StopAiming);
+		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Completed, this, &AShooterPlayerController::StopAiming);
 		
 	}
 
@@ -186,9 +256,6 @@ if (!bHit)
 }
 
 
-
-
-
 /** FIRE ACTIONS */
 
 // 4. Fortnite rifle shooting code. 
@@ -197,6 +264,16 @@ void AShooterPlayerController::FortniteShootCpp()
 	check(CurrentWeaponCpp);
 	if (CurrentAmmo < 1)
 	{
+		
+		if (ConcurrencySettings)
+		{
+			ConcurrencySettings->Concurrency.MaxCount = 1;
+		    ConcurrencySettings->Concurrency.ResolutionRule = EMaxConcurrentResolutionRule::StopOldest;
+		}
+		if (EmptyRifleSound != nullptr)
+		{
+		    UGameplayStatics::PlaySoundAtLocation(this, EmptyRifleSound, GetActorLocation(), 0.8f,1,0,nullptr, ConcurrencySettings);
+		}
 		return;
 	}
 	CurrentAmmo--;
@@ -333,6 +410,44 @@ void AShooterPlayerController::ShootWeaponAction()
 	
 }
 
+void AShooterPlayerController::InitializeCameras()
+{
+    // Create the spring arm
+    CameraBoomCpp = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+
+    CameraBoomCpp->SetupAttachment(RootComponent);
+    
+    CameraBoomCpp->bUsePawnControlRotation = true;
+	CameraBoomCpp->bDoCollisionTest = false;
+    // Set boom properties
+    CameraBoomCpp->SetRelativeLocation(FVector(0.0f, 0.0f, 60.0f)); // Example: Position boom slightly above center
+    CameraBoomCpp->TargetArmLength = 400.0f;
+    CameraBoomCpp->SocketOffset = FVector(0.0f, 100.0f, 75.0f);
+
+
+    // Create the third-person camera
+    ThirdPersonCameraCpp = CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
+    ThirdPersonCameraCpp->SetupAttachment(CameraBoomCpp, USpringArmComponent::SocketName); // Attach camera to end of boom
+    ThirdPersonCameraCpp->bUsePawnControlRotation = false; // Camera itself shouldn't rotate with controller relative to boom
+    //ThirdPersonCameraCpp->SetRelativeLocation(FVector(-70.0f, 0.0f, 20.0f)); // Often (0,0,0) relative to boom socket is fine
+
+
+    // Create the first-person camera
+    FirstPersonCameraCpp = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+
+
+    // Set first person camera relative transform relative to the 'head' socket
+    FirstPersonCameraCpp->SetRelativeLocation(FVector(0.f, 0.f, 0.f)); // Adjust as needed
+    FirstPersonCameraCpp->SetRelativeRotation(FRotator(0.f, 90.f, -90.f)); // (Pitch, Yaw, Roll) - Y forward, Z up. Adjust as needed.
+    FirstPersonCameraCpp->bUsePawnControlRotation = true; // Crucial: FP camera should directly use controller rotation
+
+    // Set initial activation state
+    FirstPersonCameraCpp->SetAutoActivate(false); // Start deactivated
+    ThirdPersonCameraCpp->SetActive(true);        // Start activated
+    ThirdPersonCameraCpp->SetAutoActivate(true);  // Ensure it's active by default
+
+}
+
 void AShooterPlayerController::Look(const FInputActionValue& Value)
 {
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -348,6 +463,127 @@ void AShooterPlayerController::Move(const FInputActionValue& Value)
 }
 
 
+// --- Aiming Functions ---
+
+void AShooterPlayerController::StartAiming()
+{
+	UE_LOG(LogTemp, Log, TEXT("StartAiming"));
+	bIsAiming = true; // Assumes bool bIsAiming; exists in your header
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->MaxWalkSpeed = AimingWalkSpeed;
+	}
+
+if (CameraBoomCpp)
+{
+	UE_LOG(LogTemp, Log, TEXT("CameraBoomCpp is valid, setting socket offset"));
+	CameraBoomCpp->SocketOffset = FVector(0.f, 75.f, 100.f);
+}
+else
+{
+	UE_LOG(LogTemp, Warning, TEXT("CameraBoomCpp is nullptr! Check if it's being overridden in Blueprint or destroyed"));
+	// Try to find the component by name/class if the direct reference is lost
+	TArray<USpringArmComponent*> SpringArms;
+	GetComponents<USpringArmComponent>(SpringArms);
+	if (SpringArms.Num() > 0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Found %d spring arm component(s)"), SpringArms.Num());
+		CameraBoomCpp = SpringArms[0]; // Reassign the reference
+	}
+}
+
+// Similar safety check for ThirdPersonCameraCpp
+if (ThirdPersonCameraCpp)
+{
+	UE_LOG(LogTemp, Log, TEXT("ThirdPersonCameraCpp is valid"));
+}
+else
+{
+	UE_LOG(LogTemp, Warning, TEXT("ThirdPersonCameraCpp is nullptr! Check if it's being overridden in Blueprint or destroyed"));
+	// Try to find the component by name/class if the direct reference is lost
+	TArray<UCameraComponent*> Cameras;
+	GetComponents<UCameraComponent>(Cameras);
+	if (Cameras.Num() > 0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Found %d camera component(s)"), Cameras.Num());
+		// Find the third-person camera (assuming it's the one attached to the spring arm)
+		for (UCameraComponent* Camera : Cameras)
+		{
+			if (Camera->GetAttachParent() == CameraBoomCpp)
+			{
+				ThirdPersonCameraCpp = Camera;
+				UE_LOG(LogTemp, Log, TEXT("Found ThirdPersonCameraCpp attached to CameraBoom"));
+				break;
+			}
+		}
+		// If we couldn't find the camera attached to spring arm, just use the first one
+		if (!ThirdPersonCameraCpp && Cameras.Num() > 0)
+		{
+			ThirdPersonCameraCpp = Cameras[0];
+			UE_LOG(LogTemp, Log, TEXT("Using first camera as ThirdPersonCameraCpp"));
+		}
+	}
+}
+
+	AimingCameraTimeline.PlayFromStart(); // Uncommented to actually play the timeline
+}
+
+void AShooterPlayerController::StopAiming()
+{
+	UE_LOG(LogTemp, Log, TEXT("StopAiming"));
+    // Only stop if we were actually aiming (prevents issues if Completed fires without Started)
+    if (!bIsAiming)
+    {
+        return;
+    }
+    
+    bIsAiming = false;
+
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        // Restore default speed only if it's valid
+        if (DefaultWalkSpeed > 0) // Basic check
+        {
+             MoveComp->MaxWalkSpeed = DefaultWalkSpeed;
+        }
+        else // Fallback if default wasn't captured
+        {
+            MoveComp->MaxWalkSpeed = 500.0f; // Or your known default
+            UE_LOG(LogTemp, Warning, TEXT("DefaultWalkSpeed was invalid, setting MaxWalkSpeed to fallback value."));
+        }
+
+    }
+
+    AimingCameraTimeline.Reverse();
+}
+
+// --- Timeline Update Functions ---
+
+void AShooterPlayerController::AimingTimelineUpdate_Offset(float Value)
+{
+    // Add Log to see if this function is called and what value it receives
+    UE_LOG(LogTemp, Log, TEXT("Timeline Update Offset: Value = %f"), Value);
+	
+    if (CameraBoomCpp)
+    {
+        CameraBoomCpp->SocketOffset = FVector(Value, 75.f, 100.f);
+    }
+}
+
+void AShooterPlayerController::AimingTimelineUpdate_FOV(float Value)
+{
+    UE_LOG(LogTemp, Log, TEXT("Timeline Update FOV: Value = %f"), Value);
+    if (ThirdPersonCameraCpp)
+    {
+        // Check if this is the active camera component on this actor
+        bool bIsActiveCam = ThirdPersonCameraCpp->IsActive();
+        UE_LOG(LogTemp, Log, TEXT("Attempting SetFieldOfView on %s. IsActive = %s"), *ThirdPersonCameraCpp->GetName(), bIsActiveCam ? TEXT("TRUE") : TEXT("FALSE"));
+
+        ThirdPersonCameraCpp->SetFieldOfView(Value);
+    }
+     else { UE_LOG(LogTemp, Warning, TEXT("ThirdPersonCameraCpp is NULL in FOV update!")); }
+}
 // --- UTILITY ---
 
 // Basic Dot Product implementation

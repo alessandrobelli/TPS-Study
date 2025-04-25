@@ -7,7 +7,10 @@
 #include "InputMappingContext.h" // Input
 #include "AttributeComponent.h" // Components
 #include "GateComponent.h"       // Components
+#include "Camera/CameraComponent.h"
 #include "Components/AudioComponent.h" // Components
+#include "Components/TimelineComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "ShooterPlayerController.generated.h"
 
 // Forward declarations
@@ -39,6 +42,17 @@ public:
 
 	// --- PROPERTIES ---
 
+	// Camera
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	USpringArmComponent* CameraBoomCpp = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UCameraComponent* ThirdPersonCameraCpp = nullptr;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category= Camera)
+	UCameraComponent* FirstPersonCameraCpp = nullptr;
+
+
 	// Input
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= Input)
 	UInputMappingContext* InputMappingContext;
@@ -55,6 +69,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Input, meta=(AllowPrivateAccess = true))
 	UInputAction* JumpAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Input, meta=(AllowPrivateAccess = true))
+	UInputAction* InteractAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Input, meta=(AllowPrivateAccess = true))
+	UInputAction* AimingAction;
+
+	
     // Animation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= Animation)
 	UAnimMontage* ShootingMontage;
@@ -78,7 +99,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = Firing)
 	float FireDelay = 60.0f / WeaponBPM;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
 	int CurrentAmmo = 40;
 
 	// Status
@@ -104,6 +125,9 @@ public:
 	bool bIsHealing = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Status")
+	bool bIsAiming = false;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Status")
 	bool bWeaponBlockingHit = false; 
 
 	// Debug
@@ -118,6 +142,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sounds")
 	USoundBase* HitSound;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sounds")
+	USoundBase* EmptyRifleSound;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Sounds")
+	USoundConcurrency* ConcurrencySettings = nullptr;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sounds")
 	UAudioComponent* ShepardTone;
 
@@ -140,11 +170,55 @@ protected:
 	// --- PROTECTED HELPERS ---
 	void SpawnWeapon();
 
+	    // Functions bound to Aiming Input Action (Triggered/Started and Completed)
+    void StartAiming();
+    void StopAiming();
+	UFUNCTION() 
+	void AimingTimelineUpdate_Offset(float Value);
+	UFUNCTION() 
+	void AimingTimelineUpdate_FOV(float Value);
+
+	// Timeline object used for smooth transitions
+    FTimeline AimingCameraTimeline;
+
+    // Curve assets (Create these in UE Editor and assign in BP Defaults)
+    UPROPERTY(EditDefaultsOnly, Category = "Aiming | Timeline")
+    UCurveFloat* AimingCameraOffsetCurve; 
+
+    UPROPERTY(EditDefaultsOnly, Category = "Aiming | Timeline")
+    UCurveFloat* AimingCameraFOVCurve; 
+
+	UPROPERTY()
+	UCurveFloat* CppCreatedOffsetCurve;
+
+	UPROPERTY()
+	UCurveFloat* CppCreatedFOVCurve;
+	
+    // Store default values to return to
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    float DefaultWalkSpeed = 500.0f; // Default walk speed before aiming
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    FVector DefaultCameraSocketOffset = FVector(0.0f, 100.0f, 75.0f); // Default socket offset before aiming
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    float DefaultCameraFOV = 90.0f; // Default camera FOV before aiming
+	
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    float AimingWalkSpeed = 150.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    float AimingSocketOffsetY = 100.0f;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
+    float AimingSocketOffsetZ = 75.0f;
+
 
 private:
     // --- COMPONENTS ---
 	UPROPERTY(VisibleAnywhere, Category = "Components")
     UGateComponent* GateComponent;
+
+	void InitializeCameras();
 
     // --- INPUT HANDLERS ---
 	void Look(const FInputActionValue& Value);
