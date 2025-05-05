@@ -10,22 +10,23 @@
 // Sets default values
 AItemBase::AItemBase()
 {
-    // Set this actor to call Tick() every frame. You can turn this off to improve performance if you don't need it.
-    PrimaryActorTick.bCanEverTick = false; // Usually items don't need to tick constantly
+    PrimaryActorTick.bCanEverTick = false;
 
     CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
     RootComponent = CollisionComponent;
-    CollisionComponent->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+    
+    // Change this to respond to visibility traces
+    
+    CollisionComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    CollisionComponent->SetSphereRadius(50.0f);
     CollisionComponent->SetGenerateOverlapEvents(true);
-    // Example: Bind overlap events if you want pickup-on-overlap
-    // CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &AItemBase::OnOverlapBegin);
 
     MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     MeshComponent->SetupAttachment(RootComponent);
-    MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Mesh usually doesn't need collision if the sphere handles interaction
-
-    // Default ItemID if using Data Tables
-    // ItemID = FName("DefaultItemID");
+    
+    // Enable collision on the mesh to be hit by visibility traces
+    MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
 // Called when the game starts or when spawned

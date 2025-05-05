@@ -13,6 +13,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "ShooterPlayerController.generated.h"
 
+class UShooterCharacterInventory;
 // Forward declarations
 class UAttributeComponent;
 class UGateComponent;
@@ -167,6 +168,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UAttributeComponent* AttributeComponent;
 
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UShooterCharacterInventory* InteractionComponent;
+
 	// --- PROTECTED HELPERS ---
 	void SpawnWeapon();
 
@@ -211,6 +215,18 @@ protected:
     float AimingSocketOffsetY = 100.0f;
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Aiming | Config")
     float AimingSocketOffsetZ = 75.0f;
+
+	/** Distance to trace forward for interaction checks. */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
+    float InteractionDistance = 300.0f;
+
+    /** Performs a line trace to check for interactable items in front of the player. */
+    void CheckForInteractable();
+
+    // Optional: Add a boolean for debug drawing
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Debug")
+    bool bInteractionDebug = true;
+
 
 
 private:

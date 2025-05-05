@@ -4,7 +4,9 @@
 #include "ShooterPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "ItemBase.h"
 #include "ProjectileBase.h"
+#include "ShooterCharacterInventory.h"
 #include "WeaponBase.h"
 #include "AssetTypeActions/AssetDefinition_SoundBase.h"
 #include "Camera/CameraComponent.h"
@@ -24,6 +26,7 @@ AShooterPlayerController::AShooterPlayerController()
 	InitializeCameras();
 
     AttributeComponent = CreateDefaultSubobject<UAttributeComponent>(TEXT("AttributeComponentCpp"));
+    InteractionComponent = CreateDefaultSubobject<UShooterCharacterInventory>(TEXT("InteractionComponentCpp"));
 
 	ShepardTone = CreateDefaultSubobject<UAudioComponent>("ShepardTone");
 	ShepardTone->bAutoActivate = false;
@@ -197,7 +200,7 @@ void AShooterPlayerController::SetupPlayerInputComponent(UInputComponent* Player
 		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Started, this, &AShooterPlayerController::StartAiming);
 		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Canceled, this, &AShooterPlayerController::StopAiming);
 		EnhancedInputComponent->BindAction(AimingAction, ETriggerEvent::Completed, this, &AShooterPlayerController::StopAiming);
-		
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Completed, this, &AShooterPlayerController::CheckForInteractable);
 	}
 
 }
@@ -410,6 +413,38 @@ void AShooterPlayerController::ShootWeaponAction()
 	
 }
 
+void AShooterPlayerController::CheckForInteractable()
+{
+    FVector CameraLocationStart;
+    FRotator CameraRotation;
+    FHitResult HitResult;
+
+    Cast<APlayerController>(GetController())->GetPlayerViewPoint(CameraLocationStart, CameraRotation);
+    FVector CameraForwardVectorEnd = CameraLocationStart + (CameraRotation.Vector() * 1500.f); // Reduced range for precision
+
+    // Set up trace parameters
+    FCollisionQueryParams QueryParams;
+    QueryParams.AddIgnoredActor(this);
+    QueryParams.bTraceComplex = true;
+    QueryParams.bReturnPhysicalMaterial = true;
+
+    // Perform trace
+    bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocationStart, CameraForwardVectorEnd, ECC_Visibility, QueryParams);
+
+    // Process what was hit
+    if (bHit && HitResult.GetActor())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Hit actor: %s, Class: %s"), 
+               *HitResult.GetActor()->GetName(), *HitResult.GetActor()->GetClass()->GetName());
+        InteractionComponent->AddItem(HitResult);
+
+    }
+    else if (bInteractionDebug)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No hit detected"));
+    }
+}
+
 void AShooterPlayerController::InitializeCameras()
 {
     // Create the spring arm
@@ -526,7 +561,7 @@ else
 	}
 }
 
-	AimingCameraTimeline.PlayFromStart(); // Uncommented to actually play the timeline
+	AimingCameraTimeline.PlayFromStart();
 }
 
 void AShooterPlayerController::StopAiming()

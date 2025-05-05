@@ -8,7 +8,8 @@
 
 class AItemBase;
 
-UCLASS(DisplayName="AC_InventoryCpp", Category="Inventory")
+
+UCLASS( ClassGroup=(Custom), meta=(DisplayName="AC_InventoryCpp",BlueprintSpawnableComponent) )
 class SHOOTERSTUDY_API UShooterCharacterInventory : public UActorComponent
 {
 	GENERATED_BODY()
@@ -30,6 +31,7 @@ public:
 
 	void PickUpItem();
 
+	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void AddItem(const FHitResult& HitResult);
 
 	// add a map of items that represent the inventory: string name and ItemBase
