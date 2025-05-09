@@ -473,7 +473,7 @@ void AShooterPlayerController::InitializeCameras()
 
     // Set first person camera relative transform relative to the 'head' socket
     FirstPersonCameraCpp->SetRelativeLocation(FVector(0.f, 0.f, 0.f)); // Adjust as needed
-    FirstPersonCameraCpp->SetRelativeRotation(FRotator(0.f, 90.f, -90.f)); // (Pitch, Yaw, Roll) - Y forward, Z up. Adjust as needed.
+    FirstPersonCameraCpp->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); 
     FirstPersonCameraCpp->bUsePawnControlRotation = true; // Crucial: FP camera should directly use controller rotation
 
     // Set initial activation state

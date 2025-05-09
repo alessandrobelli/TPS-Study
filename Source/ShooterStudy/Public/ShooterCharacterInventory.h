@@ -3,12 +3,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ItemBase.h"
 #include "GameFramework/Actor.h"
 #include "ShooterCharacterInventory.generated.h"
 
 class AItemBase;
 
+USTRUCT(BlueprintType)
+struct FInventoryEntry
+{
+    GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FItemData ItemData;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 Amount;
+
+    FInventoryEntry() : Amount(0) {}
+    FInventoryEntry(const FItemData& InItemData, int32 InAmount) : ItemData(InItemData), Amount(InAmount) {}
+};
 UCLASS( ClassGroup=(Custom), meta=(DisplayName="AC_InventoryCpp",BlueprintSpawnableComponent) )
 class SHOOTERSTUDY_API UShooterCharacterInventory : public UActorComponent
 {
@@ -34,8 +48,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void AddItem(const FHitResult& HitResult);
 
-	// add a map of items that represent the inventory: string name and ItemBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Inventory")
-	TMap<FString, class AItemBase*> InventoryMap;
+	TMap<FString, FInventoryEntry> InventoryMap;
+
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	TArray<FInventoryEntry> GetInventoryItems() const
+	{
+	    TArray<FInventoryEntry> Items;
+	    InventoryMap.GenerateValueArray(Items);
+	    return Items;
+	}
 
 };

@@ -168,9 +168,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UAttributeComponent* AttributeComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UShooterCharacterInventory* InteractionComponent;
-
 	// --- PROTECTED HELPERS ---
 	void SpawnWeapon();
 

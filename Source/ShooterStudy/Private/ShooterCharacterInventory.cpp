@@ -61,37 +61,34 @@ void UShooterCharacterInventory::PickUpItem()
  * Add item to inventory - check if item is already in inventory and increment amount
  * @param HitResult 
  */
+// ShooterCharacterInventory.cpp
+
 void UShooterCharacterInventory::AddItem(const FHitResult& HitResult)
 {
-	UE_LOG(LogTemp, Display, TEXT("Adding item"));
-	// check if actor hit is an item
-	if (AItemBase* Item = Cast<AItemBase>(HitResult.GetActor()))
+    UE_LOG(LogTemp, Display, TEXT("Adding item"));
+    if (AItemBase* Item = Cast<AItemBase>(HitResult.GetActor()))
+    {
+        FString ItemName = Item->ItemData.Name;
+        int32 AddAmount = (Item->ItemData.Amount > 0) ? Item->ItemData.Amount : 1;
+
+		if (!InventoryMap.Contains(ItemName))
 		{
-					// check if item is not already in inventory
-					if (!InventoryMap.Contains(Item->ItemData.Name))
-					{
-						// add item to inventory
-						InventoryMap.Add(Item->ItemData.Name, Item);
-						Item->Destroy();
-						UE_LOG(LogTemp, Warning, TEXT("Picked up item: %s"), *Item->ItemData.Name);
-					}
-					else
-					{
-						// already have this item in inventory, increment amount
-						AItemBase* ExistingItem = InventoryMap[Item->ItemData.Name];
-						// if no amount, add 1
-						if (ExistingItem->ItemData.Amount == 0)
-						{
-							ExistingItem->ItemData.Amount = 1;
-						}else
-						{
-							ExistingItem->ItemData.Amount += Item->ItemData.Amount;	
-						}
-						
-					}
-		}else
-			{
-					UE_LOG(LogTemp, Error, TEXT("Failed to cast to AItemBase"));
-			}
+		    FInventoryEntry NewEntry(Item->ItemData, AddAmount);
+		    InventoryMap.Add(ItemName, NewEntry);
+		    UE_LOG(LogTemp, Warning, TEXT("Picked up new item: %s (x%d)"), *ItemName, AddAmount);
+		}
+		else
+		{
+		    FInventoryEntry& Entry = InventoryMap[ItemName];
+		    Entry.Amount += AddAmount;
+		    UE_LOG(LogTemp, Warning, TEXT("Increased amount of %s to %d"), *ItemName, Entry.Amount);
+		}
+
+        Item->Destroy();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to cast to AItemBase"));
+    }
 }
 
