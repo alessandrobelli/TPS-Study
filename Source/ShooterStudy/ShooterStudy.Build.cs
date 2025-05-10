@@ -8,7 +8,7 @@ public class ShooterStudy : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ApplicationCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "DerivedDataCache", "AIModule", "AIModule" });
 

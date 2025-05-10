@@ -4,9 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DataTable.h" // Include if using Data Tables
-#include "Kismet/GameplayStatics.h" // For logging, etc.
-// Include your character/inventory component headers if needed for interaction logic
-
+#include "HAL/PlatformApplicationMisc.h"
 // Sets default values
 AItemBase::AItemBase()
 {
@@ -27,6 +25,15 @@ AItemBase::AItemBase()
     // Enable collision on the mesh to be hit by visibility traces
     MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+}
+
+void AItemBase::CopyUUID()
+{
+    FString GuidString = ItemData.ID.ToString();
+    FPlatformApplicationMisc::ClipboardCopy(*GuidString);
+#if WITH_EDITOR
+    UE_LOG(LogTemp, Log, TEXT("%s (copied to clipboard)"), *GuidString);
+#endif
 }
 
 // Called when the game starts or when spawned

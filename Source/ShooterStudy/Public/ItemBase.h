@@ -22,6 +22,10 @@ struct FItemData : public FTableRowBase // Inherit from FTableRowBase if you pla
     GENERATED_BODY()
 
 public:
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+    FGuid ID;
+    
     // The name of the item
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
     FString Name;
@@ -37,10 +41,12 @@ public:
     // The quantity or stack amount of the item (if applicable)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data", meta = (ClampMin = "0")) // Added meta for non-negative amount
     int32 Amount;
+    
 
     // Default constructor (optional but good practice)
     FItemData()
-        : Name(TEXT(""))
+        : ID(FGuid())
+        , Name(TEXT(""))
         , Description(FText::GetEmpty())
         , Category(EItemCategory::IC_None) // Default category
         , Amount(0)
@@ -61,6 +67,9 @@ public:
     // Sets default values for this actor's properties
     AItemBase();
 
+    UFUNCTION(CallInEditor, Category = "Item Properties")
+    void CopyUUID();
+
     // --- Components ---
 
     // Collision component to detect interaction (e.g., overlap or trace hits)
@@ -72,24 +81,11 @@ public:
     UStaticMeshComponent* MeshComponent;
 
     // --- Item Data ---
-
-    // Holds the core information about this item (Name, Description, Category, etc.)
-    // EditDefaultsOnly is often suitable here, meaning you set it in the Blueprint Class Defaults,
-    // not per-instance in the level. Use EditAnywhere if instances need unique base data.
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
     FItemData ItemData;
 
-    /* --- Optional: Data Table Integration ---
-    // If you want to define items primarily in a DataTable
 
-    // The Data Table containing item definitions
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties | Data Table")
-    UDataTable* ItemDataTable;
-
-    // The specific row in the ItemDataTable that defines this item
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties | Data Table")
-    FName ItemID; // Corresponds to the Row Name in the DataTable
-    */
 
 
 protected:

@@ -170,10 +170,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UShooterCharacterInventory* InteractionComponent;
+	
 	// --- PROTECTED HELPERS ---
 	void SpawnWeapon();
 
-	    // Functions bound to Aiming Input Action (Triggered/Started and Completed)
+	// Functions bound to Aiming Input Action (Triggered/Started and Completed)
     void StartAiming();
     void StopAiming();
 	UFUNCTION() 
