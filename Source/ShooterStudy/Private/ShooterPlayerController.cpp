@@ -246,16 +246,24 @@ void AShooterPlayerController::CalculateNearbyObstacles(FHitResult& Hit, const F
 	FCollisionQueryParams TraceParams;
 
 	TraceParams.AddIgnoredActor(this);  // Ignore the character firing the weapon
-TraceParams.bTraceComplex = true;   // For more accurate collision detection
-TraceParams.bReturnPhysicalMaterial = true;
+	TraceParams.bTraceComplex = true;   // For more accurate collision detection
+	TraceParams.bReturnPhysicalMaterial = true;
 
-bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, WeaponStart, WeaponEnd, ECollisionChannel::ECC_Camera, TraceParams);
-if (bShootDebug) DrawDebugLine(GetWorld(), WeaponStart, WeaponEnd, FColor::Red, false, 1.f, 0, 1.f);
-if (!bHit)
-{
-    if (bShootDebug) DrawDebugPoint(GetWorld(), Hit.ImpactPoint, 10.0f, FColor::Green, false, 1.0f);
-}
-	if (bShootDebug)DrawDebugLine(GetWorld(), WeaponStart, WeaponEnd, FColor::Red, false, 1.f, 0, 1.f);
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, WeaponStart, WeaponEnd, ECollisionChannel::ECC_Camera, TraceParams);
+
+	if (bShootDebug)
+	{
+		DrawDebugLine(GetWorld(), WeaponStart, WeaponEnd, FColor::Red, false, 1.f, 0, 1.f);
+		if (bHit)
+		{
+			DrawDebugPoint(GetWorld(), Hit.ImpactPoint, 10.0f, FColor::Green, false, 1.0f);
+		}
+	}
+
+	if (!bHit)
+	{
+		Hit.Init();  // Clear old data when no obstacle detected
+	}
 }
 
 
@@ -311,26 +319,36 @@ void AShooterPlayerController::FortniteShootCpp()
 	GetWorld()->LineTraceSingleByChannel(ActualHit, ActualWeaponTraceStart, CameraForwardVectorEnd, ECollisionChannel::ECC_Visibility, TraceParams);
 	if (bShootDebug) DrawDebugLine(GetWorld(), ActualWeaponTraceStart, CameraForwardVectorEnd, FColor::Green, false, 1.f, 0, 1.f);
 
-	// Check if hit point is in front of the character
-	FVector CharacterForward = GetActorForwardVector();
-	FVector HitDirection = ActualHit.ImpactPoint - GetActorLocation();
-	HitDirection = HitDirection.GetSafeNormal();
-			
-	float DotProduct = Dot(CharacterForward, HitDirection);
 	FVector ProjectileStartingLocation;
-	
-	// If dot product is positive, hit is in front of character
-	// When the camera hit is behind the character, it means we want to shoot directly from the weapon
-	// When the camera hit is in front, we want to shoot from the camera
-	if (DotProduct > 0.0f)
+
+	// Only validate hit direction if we actually hit something
+	if (ActualHit.bBlockingHit)
 	{
-		ProjectileStartingLocation = ActualWeaponTraceStart;
-		UE_LOG(LogTemp, Warning, TEXT("Hit is in front of character (Dot: %f)"), DotProduct);
+		// Check if hit point is in front of the character
+		FVector CharacterForward = GetActorForwardVector();
+		FVector HitDirection = ActualHit.ImpactPoint - GetActorLocation();
+		HitDirection = HitDirection.GetSafeNormal();
+
+		float DotProduct = Dot(CharacterForward, HitDirection);
+
+		// If dot product is positive, hit is in front of character
+		// When the camera hit is behind the character, it means we want to shoot directly from the weapon
+		// When the camera hit is in front, we want to shoot from the camera
+		if (DotProduct > 0.0f)
+		{
+			ProjectileStartingLocation = ActualWeaponTraceStart;
+			UE_LOG(LogTemp, Warning, TEXT("Hit is in front of character (Dot: %f)"), DotProduct);
+		}
+		else
+		{
+			ProjectileStartingLocation = WeaponStart;
+			UE_LOG(LogTemp, Warning, TEXT("Hit is behind character (Dot: %f)"), DotProduct);
+		}
 	}
 	else
 	{
-		ProjectileStartingLocation = WeaponStart;
-		UE_LOG(LogTemp, Warning, TEXT("Hit is behind character (Dot: %f)"), DotProduct);
+		// No hit, just use the appropriate start position (camera if muzzle clear, weapon otherwise)
+		ProjectileStartingLocation = ActualWeaponTraceStart;
 	}
 
 	// we need to set manually the Shooting montage for the player
