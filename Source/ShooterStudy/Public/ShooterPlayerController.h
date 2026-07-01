@@ -103,6 +103,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
 	int CurrentAmmo = 40;
 
+	// Idle weapon sway (hip-fire only; disabled while aiming)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Firing | Sway")
+	float WeaponSwayAmplitude = 2.0f; // degrees
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Firing | Sway")
+	float WeaponSwaySpeed = 1.5f;
+
 	// Status
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Status")
 	bool bAlive = true;
@@ -247,6 +254,9 @@ private:
 	void FireWeapon(); // Called by GateComponent OnGateEntered
 	void ActualFireCode(); // The core firing implementation
 	void CalculateNearbyObstacles(FHitResult& Hit, const FVector& WeaponStart, const FRotator& WeaponRot) const; // Helper for FortniteShootCpp
+
+	// --- WEAPON SWAY ---
+	void UpdateWeaponSway(); // Called every Tick; tiny idle rotation on CurrentWeaponCpp when not aiming
 
     // --- GATE LOGIC ---
 	UFUNCTION() // UFUNCTION needed for Timer Delegate

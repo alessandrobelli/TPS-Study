@@ -168,6 +168,7 @@ void AShooterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	AimingCameraTimeline.TickTimeline(DeltaTime);
+	UpdateWeaponSway();
 
 }
 
@@ -238,6 +239,26 @@ void AShooterPlayerController::SpawnWeapon()
     }
 }
 
+void AShooterPlayerController::UpdateWeaponSway()
+{
+	if (!CurrentWeaponCpp)
+	{
+		return;
+	}
+
+	if (bIsAiming)
+	{
+		CurrentWeaponCpp->SetActorRelativeRotation(FRotator::ZeroRotator);
+		return;
+	}
+
+	// Two sine waves at different speeds so the sway doesn't trace a perfectly repeating circle.
+	const float Time = GetWorld()->GetTimeSeconds();
+	const float SwayPitch = FMath::Sin(Time * WeaponSwaySpeed) * WeaponSwayAmplitude;
+	const float SwayYaw = FMath::Sin(Time * WeaponSwaySpeed * 0.7f) * WeaponSwayAmplitude;
+	CurrentWeaponCpp->SetActorRelativeRotation(FRotator(SwayPitch, SwayYaw, 0.f));
+}
+
 void AShooterPlayerController::CalculateNearbyObstacles(FHitResult& Hit, const FVector& WeaponStart, const FRotator& WeaponRot) const
 {
 	FVector WeaponEnd = UKismetMathLibrary::GetForwardVector(WeaponRot);
@@ -306,7 +327,7 @@ void AShooterPlayerController::FortniteShootCpp()
 	FRotator CameraRotation;
 
 	Cast<APlayerController>(GetController())->GetPlayerViewPoint(CameraLocationStart, CameraRotation);
-	FVector CameraForwardVectorEnd = CameraRotation.Vector() * 15000.f;
+	FVector CameraForwardVectorEnd = CameraLocationStart + CameraRotation.Vector() * 15000.f;
 	ActualWeaponTraceStart = WeaponStart;
 
 	// if there's nothing directly in front of the muzzle, use the camera location, otherwise use the muzzle location
