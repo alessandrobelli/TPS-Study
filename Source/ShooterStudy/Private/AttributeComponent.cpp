@@ -35,6 +35,11 @@ float UAttributeComponent::GetCurrentHealth()
 	return Health;
 }
 
+float UAttributeComponent::GetMaxHealth()
+{
+	return MaxHealth;
+}
+
 bool UAttributeComponent::IsAlive()
 {
 	return (Health > 0);
@@ -45,6 +50,6 @@ bool UAttributeComponent::IsAlive()
 void UAttributeComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	Health = MaxHealth;
 }
 

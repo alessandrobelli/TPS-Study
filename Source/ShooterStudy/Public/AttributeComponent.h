@@ -27,6 +27,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCurrentHealth();
+
+	UFUNCTION(BlueprintCallable)
+	float GetMaxHealth();
 	
 	UFUNCTION(BlueprintCallable)
 	bool IsAlive();
@@ -38,8 +41,10 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes")
+	float MaxHealth = 100.f;
+
 	float Health;
-	float MaxHealth;
 
 public:	
 	

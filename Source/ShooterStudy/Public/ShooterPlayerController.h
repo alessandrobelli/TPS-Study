@@ -41,6 +41,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FortniteShootCpp();
 
+	// Ragdolls this character's mesh (disables animation, enables physics simulation).
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	void Ragdoll();
+
+	// Reloads the current level. Called automatically RestartDelay seconds after death.
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	void RestartLevel();
+
 	// --- PROPERTIES ---
 
 	// Camera
@@ -114,6 +122,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Status")
 	bool bAlive = true;
 
+	// Delay between death and the level restart (s), so the ragdoll is visible first.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Status")
+	float RestartDelay = 3.0f;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Status")
 	bool bCrouching = false;
 
@@ -172,12 +184,12 @@ protected:
 	void OnPlayerGetHit(UAttributeComponent* OwningComp, float NewHealth, float Delta);
 
     // --- COMPONENTS ---
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UAttributeComponent* AttributeComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UShooterCharacterInventory* InteractionComponent;
-	
+
 	// --- PROTECTED HELPERS ---
 	void SpawnWeapon();
 
@@ -264,6 +276,7 @@ private:
 
     // --- INTERNAL STATE / TIMERS ---
     FTimerHandle RetriggerableDelayTimerHandle; // Used by FireWeapon timer loop
+    FTimerHandle RestartTimerHandle; // Used by the death -> restart delay
     bool bIsHoldingFire = false; // Tracks if the fire input is held
 	int32 UUIDLatentAction = FMath::Rand(); // Used for RetriggerableDelay LatentActionInfo
 

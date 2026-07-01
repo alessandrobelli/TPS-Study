@@ -10,6 +10,7 @@
 #include "WeaponBase.h"
 #include "AssetTypeActions/AssetDefinition_SoundBase.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -123,7 +124,7 @@ void AShooterPlayerController::BeginPlay()
 
 
 	AttributeComponent->OnHealthChanged.AddDynamic(this, &AShooterPlayerController::OnPlayerGetHit);
-	
+
 	// Bind to gate entered event
 	GateComponent->OnGateEntered.AddDynamic(this, &AShooterPlayerController::FireWeapon);
     GateComponent->bStartClosed = false;
@@ -144,21 +145,52 @@ void AShooterPlayerController::OnPlayerGetHit(UAttributeComponent* OwningComp, f
 	if (NewHealth <= 0 && !bImmortal)
 	{
 		bAlive = false;
-		USkeletalMeshComponent* currentMesh = GetMesh();
-		currentMesh->SetSimulatePhysics(true);
-		currentMesh->SetPhysicsBlendWeight(1.f);
-		currentMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		Ragdoll();
 		DisableInput(GetWorld()->GetFirstPlayerController());
-		//TODO: restart level
+		GetWorldTimerManager().SetTimer(RestartTimerHandle, this, &AShooterPlayerController::RestartLevel, FMath::Max(0.1f, RestartDelay), false);
 	}else
 	{
 		if (Delta < 0)
 		{
 			check(HitSound);
 			UGameplayStatics::PlaySound2D(this, HitSound);
-			
+
 		}
 	}
+}
+
+void AShooterPlayerController::Ragdoll()
+{
+	// Stop the movement component from fighting the physics simulation (it'll otherwise keep trying
+	// to hold the pawn upright and moving).
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+		MoveComp->DisableMovement();
+	}
+
+	// Get the capsule out of the way so it doesn't block the mesh's own physics bodies.
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (USkeletalMeshComponent* CurrentMesh = GetMesh())
+	{
+		CurrentMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CurrentMesh->SetCollisionObjectType(ECC_PhysicsBody);
+		// SetSimulatePhysics() alone only affects the mesh's root body; a full ragdoll needs every
+		// bone's physics body switched on, which is what actually makes the mesh fall apart/react.
+		CurrentMesh->SetAllBodiesSimulatePhysics(true);
+		CurrentMesh->SetSimulatePhysics(true);
+		CurrentMesh->WakeAllRigidBodies();
+		CurrentMesh->SetPhysicsBlendWeight(1.f);
+	}
+}
+
+void AShooterPlayerController::RestartLevel()
+{
+	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
 }
 
 
