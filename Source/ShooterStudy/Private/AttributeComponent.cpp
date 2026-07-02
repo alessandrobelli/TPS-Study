@@ -10,7 +10,10 @@ UAttributeComponent::UAttributeComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
-	
+
+	// Also set in BeginPlay (to pick up per-instance MaxHealth overrides), but initialize here too so
+	// anything reading health before BeginPlay (e.g. a HUD widget constructing early) doesn't see 0.
+	Health = MaxHealth;
 }
 
 void UAttributeComponent::ApplyHealthChange(float Delta)

@@ -150,11 +150,11 @@ void AShooterPlayerController::OnPlayerGetHit(UAttributeComponent* OwningComp, f
 		GetWorldTimerManager().SetTimer(RestartTimerHandle, this, &AShooterPlayerController::RestartLevel, FMath::Max(0.1f, RestartDelay), false);
 	}else
 	{
-		if (Delta < 0)
+		// HitSound is optional editor-assigned content -- missing content should degrade silently,
+		// not assert (a check() here crashes the whole editor on the first hit if it's unset).
+		if (Delta < 0 && HitSound)
 		{
-			check(HitSound);
 			UGameplayStatics::PlaySound2D(this, HitSound);
-
 		}
 	}
 }

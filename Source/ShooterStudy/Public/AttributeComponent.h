@@ -25,13 +25,13 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ApplyHealthChange(float Delta);
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintPure)
 	float GetCurrentHealth();
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintPure)
 	float GetMaxHealth();
-	
-	UFUNCTION(BlueprintCallable)
+
+	UFUNCTION(BlueprintPure)
 	bool IsAlive();
 
 	UPROPERTY(BlueprintAssignable)
