@@ -71,7 +71,12 @@ void AProjectileBase::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 void AProjectileBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// Never collide with (or damage) whoever fired this projectile.
+	if (AActor* OwnerActor = GetOwner())
+	{
+		SphereCollision->IgnoreActorWhenMoving(OwnerActor, true);
+	}
 }
 
 // Called every frame

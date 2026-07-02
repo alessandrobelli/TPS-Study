@@ -390,12 +390,10 @@ void AShooterPlayerController::FortniteShootCpp()
 		if (DotProduct > 0.0f)
 		{
 			ProjectileStartingLocation = ActualWeaponTraceStart;
-			UE_LOG(LogTemp, Warning, TEXT("Hit is in front of character (Dot: %f)"), DotProduct);
 		}
 		else
 		{
 			ProjectileStartingLocation = WeaponStart;
-			UE_LOG(LogTemp, Warning, TEXT("Hit is behind character (Dot: %f)"), DotProduct);
 		}
 	}
 	else
@@ -419,7 +417,10 @@ void AShooterPlayerController::FortniteShootCpp()
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-		
+		// Owner/Instigator let the projectile (C++ and the Blueprint hit logic) recognize and skip the shooter.
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = this;
+
 		FRotator ProjectileRotation = (ActualHit.bBlockingHit ? (ActualHit.TraceEnd - ProjectileStartingLocation).Rotation() : CameraRotation);
 		AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileClass, ProjectileStartingLocation, ProjectileRotation, SpawnParams);
 		
@@ -442,8 +443,7 @@ void AShooterPlayerController::ActualFireCode()
 {
 	// this is where I call fortniteshootcpp and eventually helldivershootcpp
 	FortniteShootCpp();
-	UE_LOG(LogTemp, Warning, TEXT("Weapon fired! Current ammo: %d"), CurrentAmmo);
-	
+
 }
 
 
