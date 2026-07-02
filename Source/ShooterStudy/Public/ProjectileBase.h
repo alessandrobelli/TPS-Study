@@ -31,6 +31,9 @@ public:
 	UPROPERTY()
 	class UMaterialInterface* BulletDecalToSpawn;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	float DamageAmount = 25.f;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
